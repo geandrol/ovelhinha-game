@@ -1,0 +1,326 @@
+import React, { useEffect, useRef, useState } from "react";
+import {
+  View,
+  StyleSheet,
+  Animated,
+  ImageBackground,
+  Pressable,
+  Text,
+} from "react-native";
+import { Audio } from "expo-av";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+import HungerBar from "../components/Stat/HungerBar";
+import SleepBar from "../components/Stat/SleepBar";
+import HappinessBar from "../components/Stat/HappinessBar";
+import Sheep from "../components/sheep/Sheep";
+
+import { feedPet, GameState, updateGame } from "../game/gameEngine";
+
+type Action = "idle" | "jump" | "eat";
+
+function clamp(n: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, n));
+}
+
+export default function Home() {
+  const [game, setGame] = useState<GameState | null>(null);
+  const [action, setAction] = useState<Action>("idle");
+  const [isBusy, setIsBusy] = useState(false);
+
+  const breathe = useRef(new Animated.Value(0)).current;
+  const jumpSoundRef = useRef<Audio.Sound | null>(null);
+  const bgMusicRef = useRef<Audio.Sound | null>(null);
+
+  /* ================= AUDIO CONFIG ================= */
+
+  useEffect(() => {
+    Audio.setAudioModeAsync({
+      playsInSilentModeIOS: true,
+      staysActiveInBackground: false,
+      shouldDuckAndroid: true,
+    });
+  }, []);
+
+  /* ================= GAME LOOP ================= */
+
+  useEffect(() => {
+    if (!game) return;
+
+    const interval = setInterval(() => {
+      setGame((current) => {
+        if (!current) return current;
+        return updateGame(current);
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [game]);
+
+  /* ================= LOAD GAME ================= */
+
+  useEffect(() => {
+    async function loadGame() {
+      const saved = await AsyncStorage.getItem("GAME_STATE");
+
+      if (saved) {
+        const parsed: GameState = JSON.parse(saved);
+        setGame(updateGame(parsed));
+      } else {
+        setGame({
+          hunger: 70,
+          sleep: 55,
+          happiness: 60,
+          lastUpdate: Date.now(),
+        });
+      }
+    }
+
+    loadGame();
+  }, []);
+
+  useEffect(() => {
+    if (!game) return;
+    AsyncStorage.setItem("GAME_STATE", JSON.stringify(game));
+  }, [game]);
+
+  /* ================= SOUNDS ================= */
+
+  useEffect(() => {
+    let mounted = true;
+
+    (async () => {
+      const { sound } = await Audio.Sound.createAsync(
+        require("../assets/images/ovelha/base/pulo.mp3"),
+        { volume: 1.0 }
+      );
+
+      if (!mounted) {
+        await sound.unloadAsync();
+        return;
+      }
+
+      jumpSoundRef.current = sound;
+    })();
+
+    return () => {
+      mounted = false;
+      jumpSoundRef.current?.unloadAsync();
+    };
+  }, []);
+
+  async function playJumpSound() {
+    await jumpSoundRef.current?.replayAsync();
+  }
+
+  async function playEatSound() {
+    const { sound } = await Audio.Sound.createAsync(
+      require("../assets/images/ovelha/animações/Sheep_Eats_Apple_Animation.mp3")
+    );
+    await sound.playAsync();
+    setTimeout(() => sound.unloadAsync(), 8000);
+  }
+
+  /* ================= BACKGROUND MUSIC ================= */
+
+useEffect(() => {
+  let mounted = true;
+
+  (async () => {
+    const { sound } = await Audio.Sound.createAsync(
+      require("../assets/images/ovelha/base/Untitled.mp3"),
+      {
+        isLooping: true,
+        volume: 0.09,
+        shouldPlay: true,
+      }
+    );
+
+    if (!mounted) {
+      await sound.unloadAsync();
+      return;
+    }
+
+    bgMusicRef.current = sound;
+  })();
+
+  return () => {
+    mounted = false;
+    bgMusicRef.current?.unloadAsync();
+  };
+}, []);
+
+
+  /* ================= BREATH ANIMATION ================= */
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(breathe, {
+          toValue: 1,
+          duration: 1200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(breathe, {
+          toValue: 0,
+          duration: 1200,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+
+    loop.start();
+    return () => loop.stop();
+  }, []);
+
+  /* ================= ACTIONS ================= */
+
+  async function handleFeed() {
+    if (!game || isBusy) return;
+
+    setIsBusy(true);
+    setAction("eat");
+
+    setGame((current) => {
+      if (!current) return current;
+      return feedPet(current);
+    });
+
+    await playEatSound();
+  }
+
+  async function handleJump() {
+    if (!game || isBusy) return;
+
+    setIsBusy(true);
+    setAction("jump");
+
+    await playJumpSound();
+
+    setGame({
+      ...game,
+      happiness: clamp(game.happiness + 2, 0, 100),
+      lastUpdate: Date.now(),
+    });
+  }
+
+  function handleSleep() {
+    if (!game || isBusy) return;
+
+    setGame({
+      ...game,
+      sleep: clamp(game.sleep + 15, 0, 100),
+      lastUpdate: Date.now(),
+    });
+  }
+
+  /* ================= RENDER ================= */
+
+  if (!game) return null;
+
+  const sheepAnimStyle = {
+    transform: [
+      {
+        scale: breathe.interpolate({
+          inputRange: [0, 1],
+          outputRange: [1, 1.03],
+        }),
+      },
+      {
+        translateY: breathe.interpolate({
+          inputRange: [0, 1],
+          outputRange: [0, -6],
+        }),
+      },
+    ],
+  };
+
+  return (
+    <ImageBackground
+      source={require("../assets/images/lucid-origin_Cute_2D_cartoon_mobile_game_background_vertical_9_16_peaceful_countryside_soft_p-0.jpg")}
+      style={styles.background}
+      resizeMode="cover"
+    >
+      <View style={styles.container}>
+        <View style={styles.statsArea}>
+          <HungerBar value={game.hunger} />
+          <SleepBar value={game.sleep} />
+          <HappinessBar value={game.happiness} />
+        </View>
+
+        <View style={styles.petArea}>
+          <Animated.View style={sheepAnimStyle}>
+            <Sheep
+              size={400}
+              action={action}
+              onActionEnd={() => {
+                setAction("idle");
+                setIsBusy(false);
+              }}
+              onPetTap={handleJump}
+            />
+          </Animated.View>
+        </View>
+      </View>
+
+      <View style={styles.actions}>
+        <Pressable
+          style={[styles.actionBtn, isBusy && styles.disabledBtn]}
+          onPress={handleFeed}
+          disabled={isBusy}
+        >
+          <Text style={styles.actionText}>🍎 Comer</Text>
+        </Pressable>
+
+        <Pressable
+          style={[styles.actionBtn, isBusy && styles.disabledBtn]}
+          onPress={handleSleep}
+          disabled={isBusy}
+        >
+          <Text style={styles.actionText}>😴 Dormir</Text>
+        </Pressable>
+
+        <Pressable style={styles.actionBtn}>
+          <Text style={styles.actionText}>🎮 Mini jogos</Text>
+        </Pressable>
+      </View>
+    </ImageBackground>
+  );
+}
+
+const styles = StyleSheet.create({
+  background: { flex: 1 },
+  container: { flex: 1, paddingTop: 56, paddingHorizontal: 16 },
+  statsArea: { gap: 10 },
+  petArea: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingTop: 190,
+  },
+  actions: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 12,
+    paddingHorizontal: 10,
+    paddingBottom: 52,
+  },
+  actionBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.18)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.22)",
+  },
+  disabledBtn: {
+    opacity: 0.4,
+  },
+  actionText: {
+    color: "white",
+    fontWeight: "700",
+    fontSize: 16,
+  },
+});
