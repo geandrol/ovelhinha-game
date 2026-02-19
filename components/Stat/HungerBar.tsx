@@ -1,8 +1,10 @@
 import React from "react";
-import StatBar from "./StatBar";
+import StatusBar from "./StatusBar";
 
+type Props = {
+  value: number;
+};
 
-export default function HungerBar({ value }: { value: number }) {
-  return <StatBar label="Fome" value={value} />;
+export default function HungerBar({ value }: Props) {
+  return <StatusBar value={value} emoji="🍎" />;
 }
-

@@ -6,7 +6,7 @@ export type GameState = {
 };
 
 const HUNGER_DECAY_PER_MS = 1 / 60000;     // 1 por minuto
-const SLEEP_DECAY_PER_MS = 1 / 300000;     // 1 a cada 5 min
+const SLEEP_DECAY_PER_MS = 2 / 300000;     // 1 a cada 5 min
 const HAPPINESS_DECAY_PER_MS = 1 / 60000;  // 1 por minuto sem interação
 
 function clamp(n: number, min: number, max: number) {
@@ -28,10 +28,19 @@ export function updateGame(state: GameState): GameState {
     lastUpdate: now,
   };
 }
-export function feedPet(state: GameState): GameState {
+export function feedPet(game: GameState): GameState {
+  if (game.hunger >= 100) return game;
+
   return {
-    ...state,
-    hunger: Math.min(100, state.hunger + 10),
+    ...game,
+    hunger: Math.min(100, game.hunger + 10),
     lastUpdate: Date.now(),
   };
 }
+
+export function canFeed(game: GameState) {
+  return game.hunger < 100;
+}
+
+
+

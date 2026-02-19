@@ -1,6 +1,10 @@
 import React from "react";
-import StatBar from "./StatBar";
+import StatusBar from "./StatusBar";
 
-export default function SleepBar({ value }: { value: number }) {
-  return <StatBar label="Sono" value={value} />;
+type Props = {
+  value: number;
+};
+
+export default function SleepBar({ value }: Props) {
+  return <StatusBar value={value} emoji="😴" />;
 }

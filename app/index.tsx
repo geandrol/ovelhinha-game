@@ -17,7 +17,7 @@ import Sheep from "../components/sheep/Sheep";
 
 import { feedPet, GameState, updateGame } from "../game/gameEngine";
 
-type Action = "idle" | "jump" | "eat";
+type Action = "idle" | "jump" | "eat" | "refuse";
 
 function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
@@ -44,18 +44,16 @@ export default function Home() {
 
   /* ================= GAME LOOP ================= */
 
-  useEffect(() => {
-    if (!game) return;
+ useEffect(() => {
+  const interval = setInterval(() => {
+    setGame((current) => {
+      if (!current) return current;
+      return updateGame(current);
+    });
+  }, 60000);
 
-    const interval = setInterval(() => {
-      setGame((current) => {
-        if (!current) return current;
-        return updateGame(current);
-      });
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [game]);
+  return () => clearInterval(interval);
+}, []);
 
   /* ================= LOAD GAME ================= */
 
@@ -121,6 +119,14 @@ export default function Home() {
     setTimeout(() => sound.unloadAsync(), 8000);
   }
 
+  async function playRefuseSound() {
+  const { sound } = await Audio.Sound.createAsync(
+    require("../assets/images/ovelha/animações/Sheep_Refuses_Apple_Animation.mp3")
+  );
+  await sound.playAsync();
+  setTimeout(() => sound.unloadAsync(), 2500);
+}
+
   /* ================= BACKGROUND MUSIC ================= */
 
 useEffect(() => {
@@ -176,18 +182,27 @@ useEffect(() => {
   /* ================= ACTIONS ================= */
 
   async function handleFeed() {
-    if (!game || isBusy) return;
+  if (isBusy) return;
 
-    setIsBusy(true);
+  setGame((current) => {
+    if (!current) return current;
+
+    // 🚫 Já está cheia
+    if (current.hunger >= 95) {
+      setAction("refuse");
+      setIsBusy(true);
+      playRefuseSound();
+      return current;
+    }
+
+    // 🍎 Alimentar
     setAction("eat");
+    setIsBusy(true);
+    playEatSound();
 
-    setGame((current) => {
-      if (!current) return current;
-      return feedPet(current);
-    });
-
-    await playEatSound();
-  }
+    return feedPet(current);
+  });
+}
 
   async function handleJump() {
     if (!game || isBusy) return;
