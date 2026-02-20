@@ -1,24 +1,25 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Audio } from "expo-av";
 import React, { useEffect, useRef, useState } from "react";
 import {
-  View,
-  StyleSheet,
   Animated,
   ImageBackground,
   Pressable,
+  StyleSheet,
   Text,
+  View,
 } from "react-native";
-import { Audio } from "expo-av";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 
+import Sheep from "../components/sheep/Sheep";
+
+import HappinessBar from "../components/Stat/HappinessBar";
 import HungerBar from "../components/Stat/HungerBar";
 import SleepBar from "../components/Stat/SleepBar";
-import HappinessBar from "../components/Stat/HappinessBar";
-import Sheep from "../components/sheep/Sheep";
+
 import SleepVerseModal from "../components/SleepVerseModal";
+import { feedPet, GameState, sleepPet, updateGame } from "../game/gameEngine";
 
-import { feedPet, sleepPet, GameState, updateGame } from "../game/gameEngine";
-
-type Action = "idle" | "jump" | "eat" | "refuse" | "sleep";
+type Action = "idle" | "jump" | "eat" | "refuse" | "sleep" | "pet";
 
 function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
@@ -35,6 +36,7 @@ export default function Home() {
   const bgMusicRef = useRef<Audio.Sound | null>(null);
   const sadSoundRef = useRef<Audio.Sound | null>(null);
   const sleepySoundRef = useRef<Audio.Sound | null>(null);
+  const petSoundRef = useRef<Audio.Sound | null>(null);
   const wasSadRef = useRef(false);
   const wassleepyRef = useRef(false);
 
@@ -157,6 +159,18 @@ export default function Home() {
     }
   }
 
+  async function playPetSound() {
+    try {
+      const { sound } = await Audio.Sound.createAsync(
+        require("../assets/images/ovelha/animações/carinho.mp3")
+      );
+      await sound.playAsync();
+      setTimeout(() => sound.unloadAsync(), 6000);
+    } catch (error) {
+      console.log("Pet sound not available yet");
+    }
+  }
+
   /* ================= BACKGROUND MUSIC ================= */
 
 useEffect(() => {
@@ -220,6 +234,41 @@ useEffect(() => {
     }
   }, [game?.sleep]);
 
+  // 😴➡️😊 Acorda automaticamente quando sleep atinge 100
+  useEffect(() => {
+    if (!game || action !== "sleep") return;
+
+    if (game.sleep >= 100) {
+      setAction("idle");
+      setIsBusy(false);
+    }
+  }, [game?.sleep, action]);
+
+  // � Reseta isBusy quando action volta para idle
+  useEffect(() => {
+    if (action === "idle") {
+      setIsBusy(false);
+    }
+  }, [action]);
+
+  // �😴💤 Aumenta sleep +5 a cada minuto enquanto dormindo
+  useEffect(() => {
+    if (!game || action !== "sleep") return;
+
+    const sleepInterval = setInterval(() => {
+      setGame((current) => {
+        if (!current) return current;
+        return {
+          ...current,
+          sleep: clamp(current.sleep + 5, 0, 100),
+          lastUpdate: Date.now(),
+        };
+      });
+    }, 60000); // 60 segundos = 1 minuto
+
+    return () => clearInterval(sleepInterval);
+  }, [action]);
+
 
   /* ================= BREATH ANIMATION ================= */
 
@@ -227,7 +276,7 @@ useEffect(() => {
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(breathe, {
-          toValue: 1,
+          toValue: 0,
           duration: 1200,
           useNativeDriver: true,
         }),
@@ -274,13 +323,36 @@ useEffect(() => {
     setIsBusy(true);
     setAction("jump");
 
-    await playJumpSound();
+    playJumpSound(); // Sem await - deixa tocar em background
 
-    setGame({
-      ...game,
-      happiness: clamp(game.happiness + 2, 0, 100),
-      lastUpdate: Date.now(),
+    setGame((current) => {
+      if (!current) return current;
+      return {
+        ...current,
+        happiness: clamp(current.happiness + 3, 0, 100),
+        sleep: clamp(current.sleep - 5, 0, 100),
+        hunger: clamp(current.hunger - 3, 0, 100),
+        lastUpdate: Date.now(),
+      };
     });
+
+    // Reset isBusy após a animação terminar (4 segundos)
+    setTimeout(() => {
+      setAction("idle");
+      setIsBusy(false);
+    }, 4000);
+  }
+
+  function handleWakeUpOrJump() {
+    // Se está dormindo, acordar
+    if (action === "sleep") {
+      setAction("idle");
+      setIsBusy(false);
+      return;
+    }
+
+    // Senão, pular normalmente
+    handleJump();
   }
 
   function handleSleep() {
@@ -302,13 +374,30 @@ useEffect(() => {
     });
   }
 
+  function handlePet() {
+    if (!game || isBusy || action === "pet") return;
+
+    setAction("pet");
+    setIsBusy(true);
+    playPetSound();
+
+    setGame((current) => {
+      if (!current) return current;
+      return {
+        ...current,
+        happiness: clamp(current.happiness + 3, 0, 100),
+        lastUpdate: Date.now(),
+      };
+    });
+  }
+
   /* ================= RENDER ================= */
 
   if (!game) return null;
 
   // 😢 Lógica de tristeza: entra se hunger <= 20 OU happiness <= 20
   // Sai quando ambos (hunger > 20 E happiness > 20)
-  const isSad = game.hunger <= 20 || game.happiness <= 20;
+  const isSad = game.hunger <= 20 || game.happiness <= 30;
 
   // 😴 Lógica de sonolência: entra se sleep < 15
   const isSleepy = game.sleep < 20;
@@ -339,14 +428,14 @@ useEffect(() => {
       <View style={styles.container}>
         <View style={styles.statsArea}>
           <HungerBar value={game.hunger} />
-          <SleepBar value={game.sleep} />
+          <SleepBar value={game.sleep} action={action} />
           <HappinessBar value={game.happiness} />
         </View>
 
         <View style={styles.petArea}>
           <Animated.View style={sheepAnimStyle}>
             <Sheep
-              size={400}
+              size={action === "sleep" ? 550 : 400}
               action={action}
               isSad={isSad}
               isSleepy={isSleepy}
@@ -354,7 +443,8 @@ useEffect(() => {
                 setAction("idle");
                 setIsBusy(false);
               }}
-              onPetTap={handleJump}
+              onPetTap={handleWakeUpOrJump}
+              onPet={handlePet}
             />
           </Animated.View>
         </View>
@@ -399,7 +489,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingTop: 190,
+    paddingTop: 170,
   },
   actions: {
     flexDirection: "row",

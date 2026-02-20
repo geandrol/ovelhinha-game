@@ -1,14 +1,15 @@
-import React, { useEffect, useRef } from "react";
-import { Image, Pressable, StyleSheet, View } from "react-native";
 import { Asset } from "expo-asset";
+import React, { useEffect, useRef } from "react";
+import { Image, PanResponder, StyleSheet, View } from "react-native";
 
-type Action = "idle" | "jump" | "eat" | "refuse" | "sleep";
+type Action = "idle" | "jump" | "eat" | "refuse" | "sleep" | "pet";
 
 type Props = {
   size?: number;
   action?: Action;
   onActionEnd?: () => void;
   onPetTap?: () => void;
+  onPet?: () => void;
   isSad?: boolean;
   isSleepy?: boolean;
 };
@@ -20,21 +21,92 @@ const REFUSE_GIF = require("../../assets/images/ovelha/animações/Sheep_Refuses
 const SAD_GIF    = require("../../assets/images/ovelha/animações/Tristeza_e_Depressão_em_Vídeo.gif");
 const SLEEPY_GIF = require("../../assets/images/ovelha/animações/Cute_Sheep_Animation_Request.gif");
 const SLEEP_GIF  = require("../../assets/images/ovelha/animações/Animated_Sleeping_Sheep_Video.gif");
+const PET_GIF    = require("../../assets/images/ovelha/animações/carinho.gif");
 
 const JUMP_MS   = 4000;
 const EAT_MS    = 8000;
 const REFUSE_MS = 8000;
 const SLEEP_MS  = 6000;
+const PET_MS    = 6000;
 
 export default function Sheep({
   size = 280,
   action = "idle",
   onActionEnd,
   onPetTap,
+  onPet,
   isSad = false,
   isSleepy = false,
 }: Props) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const panResponderRef = useRef<ReturnType<typeof PanResponder.create> | null>(null);
+  const touchStartRef = useRef({ x: 0, y: 0 });
+  const hasMovedRef = useRef(false);
+  const lastTapRef = useRef(0);
+  const doubleTapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Criar PanResponder uma única vez
+  useEffect(() => {
+    if (panResponderRef.current === null) {
+      panResponderRef.current = PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: (evt) => {
+          const { nativeEvent } = evt;
+          const dx = nativeEvent.pageX - touchStartRef.current.x;
+          const dy = nativeEvent.pageY - touchStartRef.current.y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          return distance > 10;
+        },
+        onPanResponderGrant: (evt) => {
+          const { nativeEvent } = evt;
+          touchStartRef.current = { x: nativeEvent.pageX, y: nativeEvent.pageY };
+          hasMovedRef.current = false;
+        },
+        onPanResponderMove: (evt) => {
+          const { nativeEvent } = evt;
+          const dx = nativeEvent.pageX - touchStartRef.current.x;
+          const dy = nativeEvent.pageY - touchStartRef.current.y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+
+          // Se moveu mais de 15px, é um swipe
+          if (distance > 15 && !hasMovedRef.current) {
+            hasMovedRef.current = true;
+            onPet?.();
+          }
+        },
+        onPanResponderRelease: () => {
+          // Se não moveu muito, é um tap simples
+          if (!hasMovedRef.current) {
+            const now = Date.now();
+            const timeDiff = now - lastTapRef.current;
+
+            // Se o último tap foi há menos de 300ms, é um double tap
+            if (timeDiff < 300) {
+              if (doubleTapTimerRef.current) {
+                clearTimeout(doubleTapTimerRef.current);
+              }
+              onPetTap?.(); // Double tap = pulo
+              lastTapRef.current = 0; // Reset
+            } else {
+              lastTapRef.current = now;
+              // Se passar 300ms sem segundo tap, reseta
+              doubleTapTimerRef.current = setTimeout(() => {
+                lastTapRef.current = 0;
+              }, 300);
+            }
+          }
+          hasMovedRef.current = false;
+        },
+      });
+    }
+  }, [onPet, onPetTap]);
+
+  // Limpar timers no unmount
+  useEffect(() => {
+    return () => {
+      if (doubleTapTimerRef.current) clearTimeout(doubleTapTimerRef.current);
+    };
+  }, []);
 
   // 🔄 Pré-carregar GIFs
   useEffect(() => {
@@ -45,6 +117,8 @@ export default function Sheep({
       await Asset.fromModule(REFUSE_GIF).downloadAsync();
       await Asset.fromModule(SAD_GIF).downloadAsync();
       await Asset.fromModule(SLEEPY_GIF).downloadAsync();
+      await Asset.fromModule(SLEEP_GIF).downloadAsync();
+      await Asset.fromModule(PET_GIF).downloadAsync();
     })();
 
     return () => {
@@ -52,9 +126,9 @@ export default function Sheep({
     };
   }, []);
 
-  // ⏱ Controla tempo da animação
+  // ⏱ Controla tempo da animação (não tira sleep automático)
   useEffect(() => {
-    if (action === "idle") return;
+    if (action === "idle" || action === "sleep") return;
 
     let duration = 0;
 
@@ -68,8 +142,8 @@ export default function Sheep({
       case "refuse":
         duration = REFUSE_MS;
         break;
-      case "sleep":
-        duration = SLEEP_MS;
+      case "pet":
+        duration = PET_MS;
         break;
     }
 
@@ -92,6 +166,8 @@ export default function Sheep({
         return REFUSE_GIF;
       case "sleep":
         return SLEEP_GIF;
+      case "pet":
+        return PET_GIF;
       default:
         // Ordem de prioridade quando idle:
         // 1. Sonolenta (sleep < 15)
@@ -104,7 +180,10 @@ export default function Sheep({
   };
 
   return (
-    <Pressable onPress={onPetTap} style={styles.hitbox}>
+    <View
+      style={styles.hitbox}
+      {...panResponderRef.current?.panHandlers}
+    >
       <View style={{ width: size, height: size }}>
         <Image
           key={action}
@@ -112,7 +191,7 @@ export default function Sheep({
           style={styles.layer}
         />
       </View>
-    </Pressable>
+    </View>
   );
 }
 

@@ -6,5 +6,5 @@ type Props = {
 };
 
 export default function HungerBar({ value }: Props) {
-  return <StatusBar value={value} emoji="🍎" />;
+  return <StatusBar value={value} emoji="🍎" label="Fome" />;
 }

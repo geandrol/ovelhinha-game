@@ -33,7 +33,7 @@ export function feedPet(game: GameState): GameState {
 
   return {
     ...game,
-    hunger: Math.min(100, game.hunger + 10),
+    hunger: Math.min(100, game.hunger + 5),
     lastUpdate: Date.now(),
   };
 }
