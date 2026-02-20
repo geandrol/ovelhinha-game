@@ -14,10 +14,11 @@ import HungerBar from "../components/Stat/HungerBar";
 import SleepBar from "../components/Stat/SleepBar";
 import HappinessBar from "../components/Stat/HappinessBar";
 import Sheep from "../components/sheep/Sheep";
+import SleepVerseModal from "../components/SleepVerseModal";
 
-import { feedPet, GameState, updateGame } from "../game/gameEngine";
+import { feedPet, sleepPet, GameState, updateGame } from "../game/gameEngine";
 
-type Action = "idle" | "jump" | "eat" | "refuse";
+type Action = "idle" | "jump" | "eat" | "refuse" | "sleep";
 
 function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
@@ -27,10 +28,15 @@ export default function Home() {
   const [game, setGame] = useState<GameState | null>(null);
   const [action, setAction] = useState<Action>("idle");
   const [isBusy, setIsBusy] = useState(false);
+  const [showSleepModal, setShowSleepModal] = useState(false);
 
   const breathe = useRef(new Animated.Value(0)).current;
   const jumpSoundRef = useRef<Audio.Sound | null>(null);
   const bgMusicRef = useRef<Audio.Sound | null>(null);
+  const sadSoundRef = useRef<Audio.Sound | null>(null);
+  const sleepySoundRef = useRef<Audio.Sound | null>(null);
+  const wasSadRef = useRef(false);
+  const wassleepyRef = useRef(false);
 
   /* ================= AUDIO CONFIG ================= */
 
@@ -127,6 +133,30 @@ export default function Home() {
   setTimeout(() => sound.unloadAsync(), 2500);
 }
 
+  async function playSadSound() {
+    try {
+      const { sound } = await Audio.Sound.createAsync(
+        require("../assets/images/ovelha/animações/sad.mp3")
+      );
+      await sound.playAsync();
+      setTimeout(() => sound.unloadAsync(), 3000);
+    } catch (error) {
+      console.log("Sad sound not available yet");
+    }
+  }
+
+  async function playSleepySound() {
+    try {
+      const { sound } = await Audio.Sound.createAsync(
+        require("../assets/images/ovelha/base/sleepy.mp3")
+      );
+      await sound.playAsync();
+      setTimeout(() => sound.unloadAsync(), 3000);
+    } catch (error) {
+      console.log("Sleepy sound not available yet");
+    }
+  }
+
   /* ================= BACKGROUND MUSIC ================= */
 
 useEffect(() => {
@@ -155,6 +185,40 @@ useEffect(() => {
     bgMusicRef.current?.unloadAsync();
   };
 }, []);
+
+  /* ================= STATE SOUNDS ================= */
+
+  // 😢 Toca som quando entra em modo triste
+  useEffect(() => {
+    if (!game) return;
+
+    const currentIsSad = game.hunger <= 20 || game.happiness <= 20;
+
+    if (currentIsSad && !wasSadRef.current) {
+      // Entrou em modo triste
+      playSadSound();
+      wasSadRef.current = true;
+    } else if (!currentIsSad && wasSadRef.current) {
+      // Saiu de modo triste
+      wasSadRef.current = false;
+    }
+  }, [game?.hunger, game?.happiness]);
+
+  // 😴 Toca som quando entra em modo sono
+  useEffect(() => {
+    if (!game) return;
+
+    const currentIsSleepy = game.sleep < 20;
+
+    if (currentIsSleepy && !wassleepyRef.current) {
+      // Entrou em modo sono
+      playSleepySound();
+      wassleepyRef.current = true;
+    } else if (!currentIsSleepy && wassleepyRef.current) {
+      // Saiu de modo sono
+      wassleepyRef.current = false;
+    }
+  }, [game?.sleep]);
 
 
   /* ================= BREATH ANIMATION ================= */
@@ -222,16 +286,32 @@ useEffect(() => {
   function handleSleep() {
     if (!game || isBusy) return;
 
-    setGame({
-      ...game,
-      sleep: clamp(game.sleep + 15, 0, 100),
-      lastUpdate: Date.now(),
+    console.log("Abrindo modal de sono...");
+    setShowSleepModal(true);
+  }
+
+  function handleSleepSuccess() {
+    if (!game) return;
+
+    setAction("sleep");
+    setIsBusy(true);
+
+    setGame((current) => {
+      if (!current) return current;
+      return sleepPet(current);
     });
   }
 
   /* ================= RENDER ================= */
 
   if (!game) return null;
+
+  // 😢 Lógica de tristeza: entra se hunger <= 20 OU happiness <= 20
+  // Sai quando ambos (hunger > 20 E happiness > 20)
+  const isSad = game.hunger <= 20 || game.happiness <= 20;
+
+  // 😴 Lógica de sonolência: entra se sleep < 15
+  const isSleepy = game.sleep < 20;
 
   const sheepAnimStyle = {
     transform: [
@@ -268,6 +348,8 @@ useEffect(() => {
             <Sheep
               size={400}
               action={action}
+              isSad={isSad}
+              isSleepy={isSleepy}
               onActionEnd={() => {
                 setAction("idle");
                 setIsBusy(false);
@@ -299,6 +381,12 @@ useEffect(() => {
           <Text style={styles.actionText}>🎮 Mini jogos</Text>
         </Pressable>
       </View>
+
+      <SleepVerseModal
+        visible={showSleepModal}
+        onDismiss={() => setShowSleepModal(false)}
+        onSuccess={handleSleepSuccess}
+      />
     </ImageBackground>
   );
 }

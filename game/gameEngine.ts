@@ -42,5 +42,17 @@ export function canFeed(game: GameState) {
   return game.hunger < 100;
 }
 
+export function sleepPet(game: GameState): GameState {
+  if (game.sleep >= 100) return game;
 
+  return {
+    ...game,
+    sleep: Math.min(100, game.sleep + 5), // 5 por minuto como solicitado
+    happiness: Math.min(100, game.happiness + 2), // Dormir aumenta felicidade
+    lastUpdate: Date.now(),
+  };
+}
 
+export function canSleep(game: GameState) {
+  return game.sleep < 100;
+}
