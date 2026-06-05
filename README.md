@@ -1,50 +1,174 @@
-# Welcome to your Expo app 👋
+# 🐑 Ovelhinha Game
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Uma aplicação mobile educacional desenvolvida com React Native e Expo, criada para tornar o aprendizado infantil mais divertido através de jogos, desafios e mecânicas de gamificação.
 
-## Get started
+## 📖 Sobre o Projeto
 
-1. Install dependencies
+O Ovelhinha Game foi desenvolvido com o objetivo de incentivar o aprendizado de forma lúdica e interativa, proporcionando uma experiência divertida para crianças em fase de desenvolvimento.
 
-   ```bash
-   npm install
-   ```
+Através de desafios educativos e elementos de gamificação, o aplicativo estimula a concentração, o raciocínio lógico e o engajamento dos usuários.
 
-2. Start the app
+---
 
-   ```bash
-   npx expo start
-   ```
+## ✨ Funcionalidades
 
-In the output, you'll find options to open the app in a
+- 🎮 Atividades educativas interativas
+- 🏆 Sistema de gamificação
+- 📈 Acompanhamento de progresso
+- 📱 Interface intuitiva e amigável
+- 🚀 Navegação otimizada para dispositivos móveis
+- 🎨 Design focado no público infantil
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+---
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+## 📸 Demonstração
 
-## Get a fresh project
+### Tela Inicial
 
-When you're ready, run:
+Adicione aqui uma captura da tela principal.
 
-```bash
-npm run reset-project
+```text
+/assets/screenshots/home.png
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+### Tela do Jogo
 
-## Learn more
+```text
+/assets/screenshots/game.png
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+### Resultado
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+```text
+/assets/screenshots/result.png
+```
 
-## Join the community
+---
 
-Join our community of developers creating universal apps.
+## 🛠️ Tecnologias Utilizadas
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+### Mobile
+
+- React Native
+- Expo
+- Expo Router
+- JavaScript
+- TypeScript
+
+### Desenvolvimento
+
+- Git
+- GitHub
+
+### Plataformas
+
+- Android
+- iOS
+- Web (Expo)
+
+---
+
+## 📂 Estrutura do Projeto
+
+```text
+src/
+├── app/
+├── components/
+├── assets/
+├── hooks/
+├── constants/
+├── services/
+└── utils/
+```
+
+---
+
+## ⚙️ Como Executar o Projeto
+
+### Clone o repositório
+
+```bash
+git clone https://github.com/geandrol/ovelhinha-game.git
+```
+
+### Entre na pasta
+
+```bash
+cd ovelhinha-game
+```
+
+### Instale as dependências
+
+```bash
+npm install
+```
+
+### Execute o projeto
+
+```bash
+npx expo start
+```
+
+---
+
+## 📱 Executando no Dispositivo
+
+Após iniciar o Expo:
+
+- Pressione `a` para Android
+- Pressione `i` para iOS (macOS)
+- Escaneie o QR Code com o aplicativo Expo Go
+- Pressione `w` para abrir no navegador
+
+---
+
+## 🎯 Objetivos do Projeto
+
+Este projeto foi desenvolvido para praticar e aprimorar conhecimentos em:
+
+- Desenvolvimento Mobile com React Native
+- Navegação com Expo Router
+- Componentização
+- Gerenciamento de estado
+- Experiência do Usuário (UX)
+- Gamificação aplicada à educação
+- Desenvolvimento multiplataforma
+
+---
+
+## 🚀 Resultados
+
+- Aplicação mobile funcional para aprendizagem infantil.
+- Interface amigável e adaptada ao público-alvo.
+- Arquitetura escalável baseada em componentes reutilizáveis.
+- Experiência gamificada para aumentar o engajamento dos usuários.
+
+---
+
+## 🔮 Melhorias Futuras
+
+- Sistema de ranking
+- Conquistas e medalhas
+- Perfil do jogador
+- Armazenamento em nuvem
+- Dashboard para acompanhamento pedagógico
+- Multiplayer educativo
+
+---
+
+## 👨‍💻 Autor
+
+### Geandro Lopes
+
+Desenvolvedor Full Stack apaixonado por tecnologia, educação e criação de soluções digitais.
+
+- GitHub: https://github.com/geandrol
+- LinkedIn: https://www.linkedin.com/in/geandrol
+
+---
+
+## ⭐ Apoie o Projeto
+
+Se este projeto foi útil para você, deixe uma ⭐ no repositório.
+
+Isso ajuda a divulgar o trabalho e incentiva novas melhorias.
